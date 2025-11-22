@@ -17,6 +17,7 @@ Maintainer: [Gilbert Tanner](mailto:gilbert.tanner@aau.at)
 - [Run simulation](#run-simulation)
 - [Multiagent simulation](#multiagent-simulation)
 - [Drone configuration](#drone-configuration)
+- [Custom worlds](#custom-worlds)
 - [Fly the drone via position control](#fly-the-drone-via-position-control)
 - [Feeding in external odometry](#feeding-in-external-odometry)
 - [Limitations](#limitations)
@@ -109,6 +110,10 @@ Example:
 The xacro is then converted to SDF inside the [multiagent_simulation.launch.py](src/multiagent_simulation/launch/multiagent_simulation.launch.py).
 
 ![Simulation with multiple sensors](doc/simulation_with_multiple_sensors.png)
+
+## Custom worlds
+
+For creating custom worlds please refer to the [Create custom world](doc/Create_custom_world.md) guide.
 
 ## Fly the drone via position control
 
