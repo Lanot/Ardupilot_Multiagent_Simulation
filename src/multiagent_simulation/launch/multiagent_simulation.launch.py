@@ -8,7 +8,7 @@ from launch import LaunchContext, LaunchDescription
 from launch.actions import (DeclareLaunchArgument, ExecuteProcess,
                             IncludeLaunchDescription, OpaqueFunction,
                             RegisterEventHandler)
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
@@ -179,6 +179,40 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         )
         launch_actions.append(spawn_robot)
 
+        # DDS
+        defaults_param_width_out_dds = os.path.join(pkg_multiagent_simulation, "config", "gazebo-iris.parm")
+        defaults_param_with_dds = defaults_param_width_out_dds + "," + os.path.join(pkg_ardupilot_sitl, "config", "default_params", "dds_udp.parm")
+
+        launch_arguments={
+            # virtual_ports
+            "tty0": tty0,
+            "tty1": tty1,
+            # micro_ros_agent
+            "micro_ros_agent_ns": f"{name}",
+            "baudrate": "115200",
+            "device": tty0,
+            # ardupilot_sitl
+            "synthetic_clock": "True",
+            "wipe": "False",
+            "model": "json",
+            "speedup": "1",
+            "slave": "0",
+            "instance": f"{instance}",
+            "sysid": f"{sysid}",
+            "uartC": f"uart:{tty1}",
+            #"defaults": defaults_param,
+            "sim_address": "127.0.0.1",
+            "master": f"tcp:{sim_address}:{master_port}",
+            "sitl": f"{sim_address}:{sitl_port}",
+        }
+
+        launch_arguments_with_dds = launch_arguments.copy();
+        launch_arguments_with_dds["defaults"] = defaults_param_with_dds
+
+        launch_arguments_without_dds = launch_arguments.copy();
+        launch_arguments_without_dds["defaults"] = defaults_param_width_out_dds
+
+        # With DDS
         sitl_dds = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 [
@@ -191,42 +225,29 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                     ),
                 ]
             ),
-            launch_arguments={
-                # virtual_ports
-                "tty0": tty0,
-                "tty1": tty1,
-                # micro_ros_agent
-                "micro_ros_agent_ns": f"{name}",
-                "baudrate": "115200",
-                "device": tty0,
-                # ardupilot_sitl
-                "synthetic_clock": "True",
-                "wipe": "False",
-                "model": "json",
-                "speedup": "1",
-                "slave": "0",
-                "instance": f"{instance}",
-                "sysid": f"{sysid}",
-                "uartC": f"uart:{tty1}",
-                "defaults": os.path.join(
-                    pkg_multiagent_simulation,
-                    "config",
-                    "gazebo-iris.parm",
-                )
-                + ","
-                + os.path.join(
-                    pkg_ardupilot_sitl,
-                    "config",
-                    "default_params",
-                    "dds_udp.parm",
-                ),
-                "sim_address": "127.0.0.1",
-                "master": f"tcp:{sim_address}:{master_port}",
-                "sitl": f"{sim_address}:{sitl_port}",
-            }.items(),
+            launch_arguments=launch_arguments.items(),
             condition=IfCondition(LaunchConfiguration("dds")),
         )
         launch_actions.append(sitl_dds)
+
+        # Without DDS
+        sitl_no_dds = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                [
+                    PathJoinSubstitution(
+                        [
+                            FindPackageShare("ardupilot_sitl"),
+                            "launch",
+                            "sitl.launch.py",
+                        ]
+                    ),
+                ]
+            ),
+            launch_arguments=launch_arguments.items(),
+            condition=UnlessCondition(LaunchConfiguration("dds")),
+        )
+        launch_actions.append(sitl_no_dds)
+
 
         # Publish /tf and /tf_static.
         with open(sdf_file, "r") as infp:
@@ -409,7 +430,7 @@ def generate_launch_description():
                 description="YAML file describing robots (name, position)"
             ),
             DeclareLaunchArgument(
-                "dds", default_value="true", description="Run SITL with DDS."
+                "dds", default_value="false", description="Run SITL with DDS."
             ),
             OpaqueFunction(function=launch_setup),
         ]
