@@ -224,6 +224,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
                 "master": f"tcp:{sim_address}:{master_port}",
                 "sitl": f"{sim_address}:{sitl_port}",
             }.items(),
+            condition=IfCondition(LaunchConfiguration("dds")),
         )
         launch_actions.append(sitl_dds)
 
@@ -234,7 +235,7 @@ def launch_setup(context: LaunchContext, *args, **kwargs):
         robot_desc = robot_desc.replace(
             "<fdm_port_in>9002</fdm_port_in>", f"<fdm_port_in>{control_port}</fdm_port_in>"
         )
-        
+
         robot_state_publisher = Node(
             package="robot_state_publisher",
             executable="robot_state_publisher",
@@ -380,7 +381,8 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 "world_file",
-                default_value="modelflughafen/model.sdf",
+                default_value="",
+                # default_value="modelflughafen/model.sdf",
                 description="World file to launch",
             ),
             DeclareLaunchArgument(
@@ -405,6 +407,9 @@ def generate_launch_description():
                 "robots_config_file",
                 default_value=os.path.join(get_package_share_directory("multiagent_simulation"), "config", "robots.yaml"),
                 description="YAML file describing robots (name, position)"
+            ),
+            DeclareLaunchArgument(
+                "dds", default_value="true", description="Run SITL with DDS."
             ),
             OpaqueFunction(function=launch_setup),
         ]
